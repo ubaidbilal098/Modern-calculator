@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Hand Gesture Calculator</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: white;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            width: 100%;
+        }
+        
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            background: linear-gradient(to right, #ff8a00, #da1b60);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 30px;
+            width: 100%;
+            max-width: 1200px;
+        }
+        
+        .calculator {
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 20px;
+            padding: 20px;
+            width: 380px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .display {
+            background-color: #222;
+            color: white;
+            font-size: 2.8rem;
+            padding: 20px;
+            text-align: right;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            min-height: 120px;
+            overflow: hidden;
+            word-break: break-all;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+            font-weight: 300;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .calculation {
+            font-size: 1.5rem;
+            color: #aaa;
+            min-height: 30px;
+        }
+        
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+        
+        button {
+            padding: 20px;
+            font-size: 1.5rem;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            background-color: #444;
+            color: white;
+            transition: all 0.2s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        button:hover {
+            background-color: #555;
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(1px);
+        }
+        
+        .operator {
+            background-color: #ff9500;
+        }
+        
+        .equals {
+            background-color: #00b894;
+            grid-column: span 2;
+        }
+        
+        .clear {
+            background-color: #d63031;
+        }
+        
+        .camera-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 20px;
+            padding: 20px;
+            width: 640px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .video-container {
+            position: relative;
+            width: 600px;
+            height: 450px;
+        }
+        
+        #video {
+            width: 100%;
+            height: 100%;
+            border-radius: 10px;
+            background-color: #000;
+            transform: scaleX(-1);
+        }
+        
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform: scaleX(-1);
+        }
+        
+        .gesture-info {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 1.2rem;
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            width: 100%;
+        }
+        
+        .gesture-list {
+            margin-top: 20px;
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            width: 100%;
+        }
+        
+        .gesture-list h3 {
+            margin-bottom: 15px;
+            text-align: center;
+            color: #ff8a00;
+        }
+        
+        .gesture-list ul {
+            list-style-type: none;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .gesture-list li {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .status {
+            margin-top: 15px;
+            font-weight: bold;
+            color: #00b894;
+        }
+        
+        .error {
+            color: #d63031;
+        }
+        
+        .confidence {
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+        
+        .instructions {
+            margin-top: 20px;
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            width: 100%;
+        }
+        
+        .instructions h3 {
+            color: #00b894;
+            margin-bottom: 10px;
+        }
+        
+        .gesture-feedback {
+            margin-top: 10px;
+            height: 20px;
+            font-weight: bold;
+        }
+        
+        .gesture-active {
+            color: #00b894;
+            animation: pulse 0.5s infinite alternate;
+        }
+        
+        @keyframes pulse {
+            from { opacity: 1; }
+            to { opacity: 0.6; }
+        }
+        
+        footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+            max-width: 800px;
+        }
+        
+        @media (max-width: 1100px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .camera-section {
+                width: 100%;
+                max-width: 600px;
+            }
+            
+            .video-container {
+                width: 100%;
+                height: auto;
+            }
+            
+            .gesture-list ul {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            margin-top: 20px;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #00b894;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+           100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Advanced Hand Gesture Calculator</h1>
+        <p>Use precise hand gestures to perform calculations</p>
+    </header>
+    
+    <div class="container">
+        <div class="calculator">
+            <div class="display">
+                <div class="calculation" id="calculation"></div>
+                <div id="display">0</div>
+            </div>
+            <div class="buttons">
+                <button class="clear" onclick="clearDisplay()">C</button>
+                <button onclick="appendValue('7')">7</button>
+                <button onclick="appendValue('8')">8</button>
+                <button onclick="appendValue('9')">9</button>
+                <button class="operator" onclick="appendOperator('+')">+</button>
+                <button onclick="appendValue('4')">4</button>
+                <button onclick="appendValue('5')">5</button>
+                <button onclick="appendValue('6')">6</button>
+                <button class="operator" onclick="appendOperator('-')">-</button>
+                <button onclick="appendValue('1')">1</button>
+                <button onclick="appendValue('2')">2</button>
+                <button onclick="appendValue('3')">3</button>
+                <button class="operator" onclick="appendOperator('*')">×</button>
+                <button onclick="appendValue('0')">0</button>
+                <button onclick="appendValue('.')">.</button>
+                <button class="equals" onclick="calculate()">=</button>
+                <button class="operator" onclick="appendOperator('/')">÷</button>
+            </div>
+        </div>
+        
+        <div class="camera-section">
+            <div class="video-container">
+                <video id="video" autoplay playsinline></video>
+                <canvas id="canvas"></canvas>
+            </div>
+            <div class="gesture-info">
+                <p>Current Gesture: <span id="current-gesture">None</span></p>
+                <p class="confidence">Confidence: <span id="confidence">0%</span></p>
+                <div class="gesture-feedback" id="gesture-feedback"></div>
+                <p class="status" id="status">Loading model...</p>
+            </div>
+            
+            <div class="instructions">
+                <h3>Instructions</h3>
+                <p>Hold your hand steadily in front of the camera with good lighting. Maintain each gesture for 1 second to activate the command.</p>
+            </div>
+            
+            <div class="gesture-list">
+                <h3>Gesture Controls</h3>
+                <ul>
+                    <li><strong>Open Palm</strong> - Show numbers 0-9 (based on finger count)</li>
+                    <li><strong>Thumbs Up</strong> - Equals (=)</li>
+                    <li><strong>Victory/Peace Sign</strong> - Clear (C)</li>
+                    <li><strong>Thumb Right</strong> - Addition (+)</li>
+                    <li><strong>Thumb Left</strong> - Subtraction (-)</li>
+                    <li><strong>Thumb Down</strong> - Multiplication (×)</li>
+                    <li><strong>OK Sign</strong> - Division (÷)</li>
+                    <li><strong>Fist</strong> - Decimal Point (.)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>                                            Made with❤️by UBAID BILAL</p>
+    </footer>
+
+    <script>
+        // Calculator functionality
+        let currentInput = '0';
+        let currentOperator = null;
+        let previousInput = null;
+        let shouldResetScreen = false;
+        let calculationHistory = '';
+        
+        const display = document.getElementById('display');
+        const calculationDisplay = document.getElementById('calculation');
+        
+        function updateDisplay() {
+            display.textContent = currentInput;
+            calculationDisplay.textContent = calculationHistory;
+        }
+        
+        function appendValue(value) {
+            if (currentInput === '0' || shouldResetScreen) {
+                if (value !== '.') {
+                    currentInput = value;
+                } else {
+                    currentInput = '0.';
+                }
+                shouldResetScreen = false;
+            } else {
+                if (value === '.' && currentInput.includes('.')) {
+                    return;
+                }
+                currentInput += value;
+            }
+            updateDisplay();
+        }
+        
+        function appendOperator(operator) {
+            if (currentOperator !== null) calculate();
+            calculationHistory = currentInput + ' ' + operator;
+            previousInput = currentInput;
+            currentOperator = operator;
+            shouldResetScreen = true;
+            updateDisplay();
+        }
+        
+        function calculate() {
+            if (currentOperator === null || shouldResetScreen) return;
+            
+            const prev = parseFloat(previousInput);
+            const current = parseFloat(currentInput);
+            
+            if (isNaN(prev) || isNaN(current)) return;
+            
+            let result;
+            switch (currentOperator) {
+                case '+':
+                    result = prev + current;
+                    break;
+                case '-':
+                    result = prev - current;
+                    break;
+                case '*':
+                    result = prev * current;
+                    break;
+                case '/':
+                    if (current === 0) {
+                        currentInput = 'Error';
+                        updateDisplay();
+                        return;
+                    }
+                    result = prev / current;
+                    break;
+                default:
+                    return;
+            }
+            
+            calculationHistory = previousInput + ' ' + currentOperator + ' ' + currentInput + ' =';
+            currentInput = result.toString();
+            currentOperator = null;
+            previousInput = null;
+            shouldResetScreen = true;
+            updateDisplay();
+        }
+        
+        function clearDisplay() {
+            currentInput = '0';
+            currentOperator = null;
+            previousInput = null;
+            shouldResetScreen = false;
+            calculationHistory = '';
+            updateDisplay();
+        }
+        
+        // Hand gesture recognition
+        let model = null;
+        let video = null;
+        let canvas = null;
+        let ctx = null;
+        let gestureOutput = null;
+        let confidenceOutput = null;
+        let statusText = null;
+        let gestureFeedback = null;
+        
+        // Gesture recognition variables
+        let lastGesture = null;
+        let gestureStartTime = 0;
+        let currentPredictions = null;
+        const GESTURE_HOLD_TIME = 1000; // ms to hold gesture before activation
+        
+        // Finger joint connections for drawing
+        const fingerJoints = {
+            thumb: [0, 1, 2, 3, 4],
+            indexFinger: [0, 5, 6, 7, 8],
+            middleFinger: [0, 9, 10, 11, 12],
+            ringFinger: [0, 13, 14, 15, 16],
+            pinky: [0, 17, 18, 19, 20]
+        };
+        
+        // Colors for each finger
+        const fingerColors = [
+            '#FF0000', // thumb - red
+            '#00FF00', // index - green
+            '#0000FF', // middle - blue
+            '#FFFF00', // ring - yellow
+            '#FF00FF'  // pinky - magenta
+        ];
+        
+        // Style for the points
+        const pointStyle = {
+            color: "#FF0000",
+            size: 4
+        };
+        
+        async function initHandDetection() {
+            statusText = document.getElementById('status');
+            gestureOutput = document.getElementById('current-gesture');
+            confidenceOutput = document.getElementById('confidence');
+            gestureFeedback = document.getElementById('gesture-feedback');
+            
+            statusText.textContent = "Loading TensorFlow.js model...";
+            
+            try {
+                // Load the HandPose model
+                model = await handpose.load();
+                statusText.textContent = "Model loaded! Initializing camera...";
+                
+                // Setup camera
+                video = document.getElementById('video');
+                canvas = document.getElementById('canvas');
+                ctx = canvas.getContext('2d');
+                
+                // Set canvas dimensions to match video
+                video.addEventListener('loadedmetadata', () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                });
+                
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: "user"
+                    }
+                });
+                video.srcObject = stream;
+                
+                video.onloadeddata = () => {
+                    statusText.textContent = "Camera ready! Detecting hands...";
+                    detectHands();
+                };
+            } catch (error) {
+                statusText.textContent = `Error: ${error.message}`;
+                statusText.classList.add('error');
+                console.error(error);
+            }
+        }
+        
+        async function detectHands() {
+            if (!model || !video) return;
+            
+            try {
+                currentPredictions = await model.estimateHands(video);
+                
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                if (currentPredictions.length > 0) {
+                    // Draw hand landmarks
+                    for (let i = 0; i < currentPredictions.length; i++) {
+                        const landmarks = currentPredictions[i].landmarks;
+                        
+                        // Draw connections between landmarks with different colors for each finger
+                        let colorIndex = 0;
+                        for (const [finger, points] of Object.entries(fingerJoints)) {
+                            ctx.strokeStyle = fingerColors[colorIndex];
+                            ctx.lineWidth = 3;
+                            
+                            for (let j = 0; j < points.length - 1; j++) {
+                                const startPoint = landmarks[points[j]];
+                                const endPoint = landmarks[points[j + 1]];
+                                
+                                ctx.beginPath();
+                                ctx.moveTo(startPoint[0], startPoint[1]);
+                                ctx.lineTo(endPoint[0], endPoint[1]);
+                                ctx.stroke();
+                            }
+                            
+                            colorIndex++;
+                        }
+                        
+                        // Draw landmarks as points
+                        for (let j = 0; j < landmarks.length; j++) {
+                            const [x, y] = landmarks[j];
+                            
+                            ctx.beginPath();
+                            ctx.arc(x, y, pointStyle.size, 0, 2 * Math.PI);
+                            ctx.fillStyle = pointStyle.color;
+                            ctx.fill();
+                        }
+                        
+                        // Recognize gesture
+                        const gesture = recognizeGesture(landmarks);
+                        const confidence = calculateConfidence(landmarks, gesture);
+                        
+                        if (gesture && confidence > 0.6) {
+                            gestureOutput.textContent = gesture.name + (gesture.value !== undefined ? ` (${gesture.value})` : '');
+                            confidenceOutput.textContent = `${(confidence * 100).toFixed(1)}%`;
+                            
+                            // Check if this is the same gesture as before
+                            const currentTime = new Date().getTime();
+                            
+                            if (gesture.name === lastGesture) {
+                                // Check if we've held the gesture long enough
+                                const elapsedTime = currentTime - gestureStartTime;
+                                const progress = Math.min(100, (elapsedTime / GESTURE_HOLD_TIME) * 100);
+                                
+                                gestureFeedback.textContent = `Hold gesture: ${Math.round(progress)}%`;
+                                gestureFeedback.classList.add('gesture-active');
+                                
+                                if (elapsedTime > GESTURE_HOLD_TIME) {
+                                    executeGesture(gesture.name, gesture.value);
+                                    gestureStartTime = currentTime + 1000; // Add cooldown
+                                    gestureFeedback.textContent = 'Gesture activated!';
+                                    setTimeout(() => {
+                                        gestureFeedback.textContent = '';
+                                        gestureFeedback.classList.remove('gesture-active');
+                                    }, 1000);
+                                }
+                            } else {
+                                // New gesture detected
+                                lastGesture = gesture.name;
+                                gestureStartTime = currentTime;
+                                gestureFeedback.textContent = 'Gesture detected';
+                                gestureFeedback.classList.add('gesture-active');
+                            }
+                        } else {
+                            gestureOutput.textContent = 'No gesture detected';
+                            confidenceOutput.textContent = '0%';
+                            lastGesture = null;
+                            gestureFeedback.textContent = '';
+                            gestureFeedback.classList.remove('gesture-active');
+                        }
+                    }
+                } else {
+                    gestureOutput.textContent = 'No hand detected';
+                    confidenceOutput.textContent = '0%';
+                    lastGesture = null;
+                    gestureFeedback.textContent = '';
+                    gestureFeedback.classList.remove('gesture-active');
+                }
+            } catch (error) {
+                console.error("Error detecting hands:", error);
+            }
+            
+            // Continue detection
+            requestAnimationFrame(detectHands);
+        }
+        
+        function recognizeGesture(landmarks) {
+            // Count extended fingers
+            const extendedFingers = countExtendedFingers(landmarks);
+            
+            // Recognize specific gestures based on extended fingers
+            if (extendedFingers === 5) {
+                return { name: 'open_palm', value: 5 };
+            } else if (extendedFingers === 0) {
+                return { name: 'fist', value: 0 };
+            } else if (extendedFingers === 2 && 
+                      isFingerExtended(landmarks, 1) && 
+                      isFingerExtended(landmarks, 2) &&
+                      !isFingerExtended(landmarks, 3) &&
+                      !isFingerExtended(landmarks, 4) &&
+                      !isFingerExtended(landmarks, 0)) {
+                return { name: 'victory', value: 2 };
+            } else if (extendedFingers === 1 && isFingerExtended(landmarks, 0)) {
+                // Check thumb direction
+                const thumbTip = landmarks[4];
+                const wrist = landmarks[0];
+                
+                if (thumbTip[0] > wrist[0] + 30) {
+                    return { name: 'thumb_right', value: 1 };
+                } else if (thumbTip[0] < wrist[0] - 30) {
+                    return { name: 'thumb_left', value: 1 };
+                } else if (thumbTip[1] > wrist[1] + 30) {
+                    return { name: 'thumb_down', value: 1 };
+                } else {
+                    return { name: 'thumbs_up', value: 1 };
+                }
+            } else if (extendedFingers === 2 && 
+                      isFingerExtended(landmarks, 0) && 
+                      isFingerExtended(landmarks, 1)) {
+                // Check for OK sign (thumb and index finger touching)
+                const thumbTip = landmarks[4];
+                const indexTip = landmarks[8];
+                
+                // Calculate distance between thumb and index finger
+                const distance = Math.sqrt(
+                    Math.pow(thumbTip[0] - indexTip[0], 2) + 
+                    Math.pow(thumbTip[1] - indexTip[1], 2)
+                );
+                
+                if (distance < 40) {
+                    return { name: 'ok_gesture', value: 2 };
+                }
+            }
+            
+            // If we have extended fingers but no specific gesture, return number
+            if (extendedFingers > 0 && extendedFingers <= 5) {
+                return { name: 'number', value: extendedFingers };
+            }
+            
+            return null;
+        }
+        
+        function countExtendedFingers(landmarks) {
+            let count = 0;
+            
+            // Thumb - check if it's extended to the left/right of the wrist
+            const thumbTip = landmarks[4];
+            const thumbIp = landmarks[3];
+            const wrist = landmarks[0];
+            
+            // More robust thumb detection
+            const thumbExtended = Math.abs(thumbTip[0] - wrist[0]) > Math.abs(thumbIp[0] - wrist[0]) + 15;
+            if (thumbExtended) count++;
+            
+            // Other fingers - check if tip is above the pip joint
+            const fingers = [
+                [8, 6, 5],  // index finger (tip, pip, mcp)
+                [12, 10, 9], // middle finger
+                [16, 14, 13], // ring finger
+                [20, 18, 17]  // pinky finger
+            ];
+            
+            for (const [tip, pip, mcp] of fingers) {
+                // Check if finger is extended (tip is above pip)
+                const isExtended = landmarks[tip][1] < landmarks[pip][1] - 10;
+                
+                if (isExtended) {
+                    count++;
+                }
+            }
+            
+            return count;
+        }
+        
+        function isFingerExtended(landmarks, fingerIndex) {
+            if (fingerIndex === 0) {
+                // Thumb
+                const thumbTip = landmarks[4];
+                const thumbIp = landmarks[3];
+                const wrist = landmarks[0];
+                
+                return Math.abs(thumbTip[0] - wrist[0]) > Math.abs(thumbIp[0] - wrist[0]) + 15;
+            } else {
+                // Other fingers (index:1, middle:2, ring:3, pinky:4)
+                const fingerTips = [8, 12, 16, 20];
+                const fingerPips = [6, 10, 14, 18];
+                
+                const tipIndex = fingerTips[fingerIndex-1];
+                const pipIndex = fingerPips[fingerIndex-1];
+                
+                return landmarks[tipIndex][1] < landmarks[pipIndex][1] - 10;
+            }
+        }
+        
+        function calculateConfidence(landmarks, gesture) {
+            if (!gesture) return 0;
+            
+            // Simple confidence calculation based on how well the gesture matches
+            let confidence = 0.8; // Base confidence
+            
+            // Adjust confidence based on specific gesture characteristics
+            if (gesture.name === 'thumbs_up') {
+                // For thumbs up, check if other fingers are curled
+                const otherFingersCurled = !isFingerExtended(landmarks, 1) && 
+                                          !isFingerExtended(landmarks, 2) && 
+                                          !isFingerExtended(landmarks, 3) && 
+                                          !isFingerExtended(landmarks, 4);
+                confidence = otherFingersCurled ? 0.95 : 0.6;
+            } else if (gesture.name === 'victory') {
+                // For victory, check if only index and middle fingers are extended
+                const onlyIndexMiddle = isFingerExtended(landmarks, 1) && 
+                                       isFingerExtended(landmarks, 2) && 
+                                       !isFingerExtended(landmarks, 3) && 
+                                       !isFingerExtended(landmarks, 4) && 
+                                       !isFingerExtended(landmarks, 0);
+                confidence = onlyIndexMiddle ? 0.95 : 0.6;
+            } else if (gesture.name === 'ok_gesture') {
+                // For OK gesture, check distance between thumb and index finger
+                const thumbTip = landmarks[4];
+                const indexTip = landmarks[8];
+                const distance = Math.sqrt(
+                    Math.pow(thumbTip[0] - indexTip[0], 2) + 
+                    Math.pow(thumbTip[1] - indexTip[1], 2)
+                );
+                confidence = Math.max(0, 1 - distance / 50);
+            } else if (gesture.name === 'number') {
+                // For number gestures, check if the hand is open and fingers are clearly extended
+                confidence = 0.9;
+            }
+            
+            return Math.min(1, confidence);
+        }
+        
+        function executeGesture(gestureName, value) {
+            switch(gestureName) {
+                case 'thumbs_up':
+                    calculate();
+                    break;
+                case 'victory':
+                    clearDisplay();
+                    break;
+                case 'thumb_right':
+                    appendOperator('+');
+                    break;
+                case 'thumb_left':
+                    appendOperator('-');
+                    break;
+                case 'thumb_down':
+                    appendOperator('*');
+                    break;
+                case 'ok_gesture':
+                    appendOperator('/');
+                    break;
+                case 'fist':
+                    appendValue('.');
+                    break;
+                case 'number':
+                    if (value >= 0 && value <= 9) {
+                        appendValue(value.toString());
+                    }
+                    break;
+                case 'open_palm':
+                    if (value === 5) {
+                        appendValue('5');
+                    }
+                    break;
+            }
+        }
+        
+        // Initialize hand detection when the page loads
+        window.onload = initHandDetection;
+    </script>
+</body>
+</html>
